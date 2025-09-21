@@ -1,35 +1,93 @@
-version: "3.8"
+version: "3.9"
+
+# NOTE:
+# - Konfigurasi ini default aman (TLS aktif), namun DEV menggunakan trustServerCertificate=true agar tidak kena PKIX.
+# - Untuk PROD: ubah KC_DB_TRUST_SERVER_CERT=false dan pasang sertifikat SQL Server yang valid.
 
 services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      SA_PASSWORD: "${SA_PASSWORD}"
+      # Kendali perilaku sqlcmd di init (hanya DEV)
+      DEV_TRUST_SQLCMD: "${DEV_TRUST_SQLCMD:-true}"
+      # Password DB user khusus Keycloak, dipass ke skrip init via sqlcmd -v
+      KEYCLOAK_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD}"
+    ports:
+      - "1433:1433" # Untuk DEV. Di PROD sebaiknya di-internal-kan saja (hapus mapping port).
+    volumes:
+      - mssql-data:/var/opt/mssql
+      - ./mssql/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+      - ./mssql/init:/docker-init:ro
+    healthcheck:
+      # Healthcheck akan menggunakan sqlcmd untuk SELECT 1
+      test: >
+        /bin/bash -lc '
+        set -e;
+        SQLCMD="";
+        if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then SQLCMD=/opt/mssql-tools18/bin/sqlcmd;
+        elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then SQLCMD=/opt/mssql-tools/bin/sqlcmd;
+        else SQLCMD=sqlcmd; fi;
+        EXTRA=""; if [ "${DEV_TRUST_SQLCMD:-true}" = "true" ]; then EXTRA="-C"; fi;
+        $SQLCMD -S localhost -U sa -P "${SA_PASSWORD}" -Q "SELECT 1" $EXTRA >/dev/null 2>&1
+        '
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    entrypoint: ["/bin/bash", "-lc", "/bin/bash /usr/local/bin/entrypoint.sh"]
+
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
-    command: ["start-dev"]
+    restart: unless-stopped
+    depends_on:
+      mssql:
+        condition: service_healthy
     environment:
-      - KEYCLOAK_ADMIN=admin
-      - KEYCLOAK_ADMIN_PASSWORD=admin
-      - KC_DB=mssql
-      - KC_DB_USERNAME=sa
-      - KC_DB_PASSWORD=YourStrongPassword123
-      - KC_DB_URL=jdbc:sqlserver://mssql:1433;databaseName=keycloak;encrypt=true;trustServerCertificate=true
+      # DB config
+      KC_DB: mssql
+      KC_DB_USERNAME: keycloak_user
+      KC_DB_PASSWORD: "${KEYCLOAK_DB_PASSWORD}"
+      # Default DEV: encrypt=true;trustServerCertificate=true
+      # PROD: set KC_DB_TRUST_SERVER_CERT=false dan pasang SQL Server certificate yang valid (CN/SAN cocok)
+      KC_DB_ENCRYPT: "${KC_DB_ENCRYPT:-true}"
+      KC_DB_TRUST_SERVER_CERT: "${KC_DB_TRUST_SERVER_CERT:-true}"
+      KC_DB_URL: "jdbc:sqlserver://mssql:1433;databaseName=keycloak;encrypt=${KC_DB_ENCRYPT};trustServerCertificate=${KC_DB_TRUST_SERVER_CERT}"
+      # Hostname (override bila di balik reverse proxy)
+      KC_HOSTNAME: "${KC_HOSTNAME:-localhost}"
+      # Admin bootstrap
+      KEYCLOAK_ADMIN: "admin"
+      KEYCLOAK_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD}"
+      # Observability
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      # (opsional) Jika di balik proxy modern
+      # KC_PROXY: "edge"
+      # (opsional) Gunakan path lama /auth
+      # KC_HTTP_RELATIVE_PATH: "/auth"
+    command:
+      - start-dev
     ports:
       - "8080:8080"
-    depends_on:
-      - mssql
-    volumes:
-      - keycloak_data:/opt/keycloak/data
-
-  mssql:
-    image: mcr.microsoft.com/mssql/server:2019-latest
-    container_name: mssql
-    environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=YourStrongPassword123
-    ports:
-      - "1433:1433"
-    volumes:
-      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bash",
+          "-lc",
+          "curl -fsS http://localhost:8080/health/ready >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    # Gunakan network default bridge
+    # networks: [default]
 
 volumes:
-  keycloak_data:
-  mssql_data:
+  mssql-data:
