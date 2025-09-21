@@ -2,35 +2,43 @@
 
 ### Description
 
-This is trial project to implement Keycloak as your identity management provider.
+This project demonstrates the implementation of Keycloak as an identity management provider.
 
 ### Requirements
 
-Below are the dependencies that required for this project:
+The following dependencies are required for this project:
 
-1. Keycloak
-2. SQL Server
-3. Docker
+1. **Keycloak**
+2. **SQL Server**
+3. **Docker**
 
-### Problem and Solution
+### Problems and Solutions
 
-During the trial process, I encountered several issues. Below are some of the issues identified so far and their respective solutions.
+During the trial process, several issues were encountered. Below are the identified issues along with their solutions:
 
-#### 1. Issue : Database driver could not establish a secure connection to SQL Server by using Secure Sockets Layer (SSL) encryption
+#### 1. **Issue**: Database driver could not establish a secure connection to SQL Server using Secure Sockets Layer (SSL) encryption.
 
-##### Identified Root Cause:
+- **Root Cause**:  
+   SQL Server requires TLS certificate validation by default.
 
-This issue occurs because SQL Server requires TLS certificate validation by default.
+- **Solution**:  
+   Add `TrustServerCertificate=true` to the connection string configuration for the SQL Server database.
 
-##### Solution:
+#### 2. **Issue**: [Provide a brief description of the second issue here]
 
-Add the use of TrustServerCertificate in the connection string configuration for the SQL Server database.
+- **Root Cause**:  
+   [Explain the root cause of the second issue]
 
-2. Issue :
+- **Solution**:  
+   [Provide the solution for the second issue]
 
 ### External References
 
-External references that related to this project :
+Below are some useful references related to this project:
 
-1. Keycloak official documentation
-2. etc
+1. [Keycloak Official Documentation](https://www.keycloak.org/documentation)
+2. [Add other relevant references here]
+
+### Notes
+
+Feel free to contribute or raise issues in this repository to improve the project further.
