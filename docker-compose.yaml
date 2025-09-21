@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    command: start-dev --db=mssql --db-url-database=keycloak --db-url-host=mssql --db-username=sa --db-password=YourStrongPassword123 --db-url-properties=trustServerCertificate=true
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mssql
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: mssql
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=YourStrongPassword123
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+volumes:
+  keycloak_data:
+  mssql_data:
