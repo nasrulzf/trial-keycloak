@@ -4,10 +4,14 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:latest
     container_name: keycloak
-    command: start-dev --db=mssql --db-url-database=keycloak --db-url-host=mssql --db-username=sa --db-password=YourStrongPassword123 --db-url-properties=trustServerCertificate=true
+    command: ["start-dev"]
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=mssql
+      - KC_DB_USERNAME=sa
+      - KC_DB_PASSWORD=YourStrongPassword123
+      - KC_DB_URL=jdbc:sqlserver://mssql:1433;databaseName=keycloak;encrypt=true;trustServerCertificate=true
     ports:
       - "8080:8080"
     depends_on:
