@@ -20,11 +20,11 @@ During the trial process, I encountered several issues. Below are some of the is
 
 ##### Identified Root Cause:
 
-    This issue occurs because SQL Server requires TLS certificate validation by default.
+This issue occurs because SQL Server requires TLS certificate validation by default.
 
 ##### Solution:
 
-    Add the use of TrustServerCertificate in the connection string configuration for the SQL Server database.
+Add the use of TrustServerCertificate in the connection string configuration for the SQL Server database.
 
 2. Issue :
 
